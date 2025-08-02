@@ -1,5 +1,5 @@
 #  Configurable Optimized System for Machine Intelligence Control 
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16730044.svg)](https://doi.org/10.5281/zenodo.16730044)
 
 ![AI Banner GIF](./imgs/pwr.gif)
 
@@ -104,3 +104,4 @@ This is a community-driven project. Contributions are welcome! Please feel free 
 -   Improve the documentation.
 
 Let's build the most comprehensive and powerful collection of LLM configurations together!
+
