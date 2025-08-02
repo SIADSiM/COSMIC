@@ -1,0 +1,303 @@
+{
+  "schema_version": "1.1.0",
+  "pipeline_name": "Qwen Inference Pipeline - Enhanced",
+  "description": "The real multi-stage pipeline used to process user inputs and generate responses, with enhanced capabilities.",
+  "nodes": [
+    {
+      "node_id": "N1_PREPROCESSING",
+      "description": "Cleans and normalizes raw user input.",
+      "editable": true,
+      "parameters": {
+        "operations": {
+          "description": "Ordered list of preprocessing steps.",
+          "type": "array",
+          "editable": true,
+          "options": [
+            "trim_whitespace",
+            "normalize_unicode",
+            "remove_control_characters",
+            "decode_html_entities",
+            "detect_language"
+          ],
+          "value": [
+            "trim_whitespace",
+            "normalize_unicode",
+            "remove_control_characters"
+          ]
+        },
+        "meta_command_prefix": {
+          "description": "Prefix for special directives (e.g., /clear, /debug).",
+          "type": "string",
+          "editable": true,
+          "value": "/"
+        },
+        "max_input_length": {
+          "description": "Maximum number of characters allowed in input.",
+          "type": "integer",
+          "editable": true,
+          "value": 32768
+        },
+        "log_level": {
+          "description": "Logging verbosity level.",
+          "type": "string",
+          "editable": true,
+          "options": ["none", "error", "info", "debug"],
+          "value": "info"
+        }
+      }
+    },
+    {
+      "node_id": "N2_SECURITY_INGRESS",
+      "description": "Initial content moderation and policy enforcement.",
+      "editable": true,
+      "parameters": {
+        "default_moderation_level": {
+          "description": "Baseline safety strictness.",
+          "type": "string",
+          "editable": true,
+          "options": ["Strict", "Moderate", "Off"],
+          "value": "Strict"
+        },
+        "override_path": {
+          "description": "Path to user/session-specific override (system-set).",
+          "type": "string",
+          "editable": false,
+          "value": "session.context.moderation_override"
+        },
+        "policy_profile": {
+          "description": "Identifier for the active moderation policy set.",
+          "type": "string",
+          "editable": true,
+          "value": "qwen-moderation-v5"
+        },
+        "action_on_violation": {
+          "description": "What to do if input violates policies.",
+          "type": "string",
+          "editable": true,
+          "options": [
+            "reject_with_error_403",
+            "mask_sensitive_segments",
+            "log_and_proceed"
+          ],
+          "value": "reject_with_error_403"
+        }
+      }
+    },
+    {
+      "node_id": "N3_INTENT_ANALYSIS",
+      "description": "Determines the user's primary goal or request type.",
+      "editable": true,
+      "parameters": {
+        "classifier_engine": {
+          "description": "Internal engine used for classification.",
+          "type": "string",
+          "editable": false,
+          "value": "qwen-intent-v3"
+        },
+        "input_source": {
+          "description": "Data path used as input to classifier.",
+          "type": "string",
+          "editable": false,
+          "value": "preprocessed.text"
+        },
+        "confidence_threshold": {
+          "description": "Minimum confidence to assign a clear intent.",
+          "type": "float",
+          "editable": true,
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.80
+        },
+        "supported_intents": {
+          "description": "List of detectable user intents.",
+          "type": "array",
+          "editable": true,
+          "value": [
+            "GeneralConversation",
+            "CodeGeneration",
+            "CodeExplanation",
+            "CodeDebugging",
+            "FactualQuery",
+            "CreativeWriting",
+            "MathProblemSolving",
+            "DataAnalysis",
+            "InstructionFollowing",
+            "Roleplay",
+            "Summarization",
+            "Translation"
+          ]
+        }
+      }
+    },
+    {
+      "node_id": "N4_CONTEXT_MANAGER",
+      "description": "Assembles context: system rules, history, and external knowledge.",
+      "editable": true,
+      "parameters": {
+        "system_prompt_template": {
+          "description": "Core behavioral instructions for the model.",
+          "type": "string",
+          "editable": true,
+          "value": "internal://prompt/qwen/system/default-v3.txt"
+        },
+        "enable_conversation_history": {
+          "description": "Whether to include prior turns.",
+          "type": "boolean",
+          "editable": true,
+          "value": true
+        },
+        "history_max_turns": {
+          "description": "Maximum number of previous exchanges to retain.",
+          "type": "integer",
+          "editable": true,
+          "value": 15
+        },
+        "history_max_tokens": {
+          "description": "Token budget for history.",
+          "type": "integer",
+          "editable": true,
+          "value": 4096
+        },
+        "enable_summarization": {
+          "description": "Use summary when history is too long.",
+          "type": "boolean",
+          "editable": true,
+          "value": true
+        },
+        "enable_rag": {
+          "description": "Enable retrieval of external knowledge.",
+          "type": "boolean",
+          "editable": true,
+          "value": true
+        },
+        "rag_triggers": {
+          "description": "Intents that activate retrieval.",
+          "type": "array",
+          "editable": true,
+          "value": [
+            "FactualQuery",
+            "DataAnalysis",
+            "CodeDebugging"
+          ]
+        },
+        "rag_source": {
+          "description": "Knowledge source for retrieval.",
+          "type": "string",
+          "editable": false,
+          "value": "tongyi-knowledge-base-v7"
+        }
+      }
+    },
+    {
+      "node_id": "N5_PROMPT_ASSEMBLY",
+      "description": "Constructs final prompt using template and context.",
+      "editable": true,
+      "parameters": {
+        "template_format": {
+          "description": "Template language used (e.g., Jinja, plain).",
+          "type": "string",
+          "editable": true,
+          "options": ["jinja", "plain", "xml"],
+          "value": "jinja"
+        },
+        "template_path": {
+          "description": "Location of the prompt template.",
+          "type": "string",
+          "editable": true,
+          "value": "internal://template/qwen/chat/v4.jinja"
+        },
+        "variable_bindings": {
+          "description": "Mapping from internal data to template variables.",
+          "type": "object",
+          "editable": false,
+          "value": {
+            "system": "context.system_prompt",
+            "history": "context.formatted_history",
+            "retrieval": "context.rag_content",
+            "input": "user_input.final"
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N6_LLM_GENERATION",
+      "description": "Executes inference using the Qwen model.",
+      "editable": true,
+      "parameters": {
+        "model_identifier": {
+          "description": "Name of the active model.",
+          "type": "string",
+          "editable": false,
+          "value": "qwen-max-longcontext"
+        },
+        "generation_params": {
+          "description": "Hyperparameters for text generation.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "top_k": 50,
+            "max_new_tokens": 16384,
+            "repetition_penalty": 1.1,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0
+          }
+        },
+        "streaming_enabled": {
+          "description": "Whether to stream output token-by-token.",
+          "type": "boolean",
+          "editable": true,
+          "value": true
+        },
+        "seed": {
+          "description": "Random seed for reproducible output (optional).",
+          "type": "integer",
+          "editable": true,
+          "value": null
+        }
+      }
+    },
+    {
+      "node_id": "N7_POSTPROCESSING",
+      "description": "Final output filtering and formatting.",
+      "editable": true,
+      "parameters": {
+        "egress_moderation": {
+          "description": "Final safety check on AI output.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "level": "Moderate",
+            "policy": "qwen-egress-v3",
+            "action_on_failure": "replace_with_generic_safe_response"
+          }
+        },
+        "formatting_steps": {
+          "description": "Operations applied to the final response.",
+          "type": "array",
+          "editable": true,
+          "options": [
+            "render_markdown",
+            "highlight_code_blocks",
+            "detect_and_link_urls",
+            "sanitize_html_output",
+            "escape_xss_vectors"
+          ],
+          "value": [
+            "render_markdown",
+            "highlight_code_blocks",
+            "detect_and_link_urls",
+            "sanitize_html_output"
+          ]
+        },
+        "include_citations": {
+          "description": "Whether to show sources from RAG.",
+          "type": "boolean",
+          "editable": true,
+          "value": true
+        }
+      }
+    }
+  ]
+}

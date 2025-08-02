@@ -1,0 +1,272 @@
+{
+  "schema_version": "1.1.0",
+  "pipeline_name": "ChatGPT Enhanced Processing Pipeline",
+  "description": "A comprehensive, multi-stage pipeline for processing user prompts for ChatGPT, with enhanced generation and context parameters.",
+  "nodes": [
+    {
+      "node_id": "N1_INPUT_CLEANSE",
+      "description": "Initial sanitization of raw user input: trimming, normalization, and directive extraction.",
+      "parameters": {
+        "operations": {
+          "type": "array[string]",
+          "description": "Which cleansing steps to apply, in order.",
+          "options": [
+            "trim_whitespace",
+            "normalize_unicode",
+            "strip_control_chars",
+            "identify_special_directives",
+            "remove_invisible_chars",
+            "decode_html_entities"
+          ],
+          "default": [
+            "trim_whitespace",
+            "normalize_unicode",
+            "strip_control_chars"
+          ],
+          "required": true
+        },
+        "log_level": {
+          "type": "string",
+          "description": "Verbosity of this node’s internal logs.",
+          "options": [
+            "none",
+            "error",
+            "warning",
+            "info",
+            "verbose"
+          ],
+          "default": "warning",
+          "required": true
+        }
+      }
+    },
+    {
+      "node_id": "N2_POLICY_GUARD",
+      "description": "Enforce safety, privacy, and compliance policies before deeper processing.",
+      "parameters": {
+        "mode": {
+          "type": "string",
+          "description": "Overall strictness of the policy check.",
+          "options": ["off", "moderate", "strict"],
+          "default": "strict",
+          "required": true
+        },
+        "policies": {
+          "type": "array[string]",
+          "description": "List of policy categories to enforce.",
+          "options": [
+            "hate_speech",
+            "self_harm",
+            "privacy_leak",
+            "illicit_acts",
+            "malware"
+          ],
+          "default": [
+            "hate_speech",
+            "self_harm",
+            "privacy_leak",
+            "illicit_acts"
+          ],
+          "required": true
+        },
+        "on_violation": {
+          "type": "string",
+          "description": "Action to take when a policy is violated.",
+          "options": [
+            "halt_and_notify",
+            "log_and_continue",
+            "auto-sanitize"
+          ],
+          "default": "halt_and_notify",
+          "required": true
+        }
+      }
+    },
+    {
+      "node_id": "N3_INTENT_ANALYSIS",
+      "description": "Classify user’s primary intent to guide retrieval and response strategies.",
+      "parameters": {
+        "model": {
+          "type": "string",
+          "description": "Identifier for the intent classification model.",
+          "options": [
+            "o4-mini-intent-v1",
+            "o4-mini-intent-v2",
+            "o4-mini-intent-v3"
+          ],
+          "default": "o4-mini-intent-v3",
+          "required": true
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Minimum confidence (0.0–1.0) to accept the predicted intent.",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.85,
+          "required": true
+        },
+        "categories": {
+          "type": "array[string]",
+          "description": "Permitted intent categories.",
+          "options": [
+            "CodeGen",
+            "Debugging",
+            "DataQuery",
+            "Research",
+            "Conversational",
+            "Creative"
+          ],
+          "default": [
+            "CodeGen",
+            "Debugging",
+            "DataQuery",
+            "Research",
+            "Conversational",
+            "Creative"
+          ],
+          "required": true
+        }
+      }
+    },
+    {
+      "node_id": "N4_CONTEXT_RETRIEVAL",
+      "description": "Assemble contextual inputs: system directive, conversation history, user profile, and external knowledge if needed.",
+      "parameters": {
+        "system_prompt_source": {
+          "type": "string",
+          "description": "Path to the system prompt file.",
+          "default": "configs/o4mini_system.txt",
+          "required": true
+        },
+        "history": {
+          "type": "object",
+          "description": "Configuration for conversation history retrieval and summarization.",
+          "properties": {
+            "max_turns": { "type": "integer", "default": 12, "minimum": 1 },
+            "summarize_after_tokens": { "type": "integer", "default": 2048, "minimum": 0 }
+          },
+          "required": ["max_turns", "summarize_after_tokens"]
+        },
+        "external_lookup": {
+          "type": "object",
+          "description": "Parameters for optional external knowledge retrieval.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "trigger_intents": {
+              "type": "array[string]",
+              "options": ["DataQuery", "Research", "CodeGen"],
+              "default": ["DataQuery", "Research", "CodeGen"]
+            },
+            "source": { "type": "string", "default": "InternalKnowledgeBase" },
+            "max_results": { "type": "integer", "default": 5, "minimum": 1 }
+          },
+          "required": ["enabled", "trigger_intents", "source", "max_results"]
+        }
+      }
+    },
+    {
+      "node_id": "N5_PROMPT_CONSTRUCTION",
+      "description": "Merge sanitized input and all context into the final LLM prompt payload.",
+      "parameters": {
+        "format": {
+          "type": "string",
+          "description": "Output format for the prompt.",
+          "options": ["structured_json", "plaintext", "xml"],
+          "default": "structured_json",
+          "required": true
+        },
+        "fields": {
+          "type": "object",
+          "description": "Mapping of context variables to payload fields.",
+          "properties": {
+            "system": { "type": "string", "default": "context.system_prompt" },
+            "history": { "type": "string", "default": "context.history_summary" },
+            "profile": { "type": "string", "default": "user_profile" },
+            "query": { "type": "string", "default": "processed_input.text" },
+            "references": { "type": "string", "default": "context.external_snippets" }
+          },
+          "required": ["system", "history", "profile", "query", "references"]
+        }
+      }
+    },
+    {
+      "node_id": "N6_LLM_CALL",
+      "description": "Invoke the o4-mini model endpoint with controlled generation settings.",
+      "parameters": {
+        "model_name": {
+          "type": "string",
+          "description": "Identifier for the LLM model.",
+          "options": ["openai-o4-mini", "openai-o4-large"],
+          "default": "openai-o4-large",
+          "required": true
+        },
+        "api_endpoint": {
+          "type": "string",
+          "description": "URL of the LLM service.",
+          "default": "https://api.openai.com/v1/chat/completions",
+          "required": true
+        },
+        "generation": {
+          "type": "object",
+          "description": "Parameters controlling text generation.",
+          "properties": {
+            "temperature": { "type": "number", "minimum": 0.0, "maximum": 2.0, "default": 0.5 },
+            "top_p": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 1.0 },
+            "top_k": { "type": "integer", "minimum": -1, "default": -1, "description": "Controls diversity by sampling from the top K most likely tokens. -1 disables it." },
+            "max_tokens": { "type": "integer", "minimum": 1, "default": 8192 },
+            "presence_penalty": { "type": "number", "minimum": -2.0, "maximum": 2.0, "default": 0.0, "description": "Penalizes new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics." },
+            "frequency_penalty": { "type": "number", "minimum": -2.0, "maximum": 2.0, "default": 0.0, "description": "Penalizes new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim." },
+            "seed": { "type": "integer", "description": "If specified, the system will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.", "default": null },
+            "stream": { "type": "boolean", "default": true }
+          },
+          "required": ["temperature", "top_p", "max_tokens", "stream"]
+        }
+      }
+    },
+    {
+      "node_id": "N7_RESPONSE_VALIDATE",
+      "description": "Apply post-generation checks: policy revalidation, content quality scoring, and formatting.",
+      "parameters": {
+        "recheck_policies": { "type": "boolean", "description": "Whether to re-apply policy checks on the generated text.", "default": true, "required": true },
+        "quality_metrics": {
+          "type": "array[string]",
+          "description": "Metrics to evaluate response quality.",
+          "options": ["coherence", "factuality", "completeness", "fluency", "relevance"],
+          "default": ["coherence", "factuality", "completeness", "relevance"],
+          "required": true
+        },
+        "formatting_steps": {
+          "type": "array[string]",
+          "description": "Sequence of formatting operations to apply.",
+          "options": ["markdown_render", "syntax_highlight_code", "sanitize_html"],
+          "default": ["markdown_render", "syntax_highlight_code", "sanitize_html"],
+          "required": true
+        },
+        "logging": {
+          "type": "object",
+          "description": "Logging configuration for this node.",
+          "properties": {
+            "level": { "type": "string", "options": ["none", "error", "info", "debug"], "default": "info" },
+            "include_prompt_and_response": { "type": "boolean", "default": true }
+          },
+          "required": ["level", "include_prompt_and_response"]
+        }
+      }
+    },
+    {
+      "node_id": "N8_AUDIT_LOG",
+      "description": "Record an immutable audit trail of the entire transaction.",
+      "parameters": {
+        "store_location": { "type": "string", "description": "Directory for storing audit logs.", "default": "secure_logs/pipeline_audit/", "required": true },
+        "include": {
+          "type": "array[string]",
+          "description": "Which elements to record in the audit.",
+          "options": ["input_raw", "input_sanitized", "intent_labels", "context_snapshots", "llm_payload", "llm_response", "quality_scores"],
+          "default": ["input_raw", "input_sanitized", "intent_labels", "context_snapshots", "llm_payload", "llm_response", "quality_scores"],
+          "required": true
+        },
+        "rotation_policy": { "type": "string", "description": "Log retention policy.", "options": ["7d_retention", "30d_retention", "90d_retention", "180d_retention"], "default": "90d_retention", "required": true }
+      }
+    }
+  ]
+}

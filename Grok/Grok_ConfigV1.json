@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0.0",
+  "pipeline_name": "Grok Base Pipeline",
+  "description": "A pipeline for interacting with the Grok API, based on the provided configuration format.",
+  "nodes": [
+    {
+      "node_id": "N1_REQUEST_SETUP",
+      "description": "Sets up the core request parameters, including the model and system prompt.",
+      "parameters": {
+        "model": {
+          "type": "string",
+          "default": "grok-3",
+          "options": ["grok-3", "grok-3-mini", "grok-3-fast", "grok-4-latest"],
+          "description": "The Grok model to use for the completion."
+        },
+        "system_prompt_source": {
+          "type": "string",
+          "default": null,
+          "description": "Path to a file containing the system prompt. If null, no system prompt is used."
+        }
+      }
+    },
+    {
+      "node_id": "N2_LLM_CALL",
+      "description": "Constructs the payload and calls the Grok LLM endpoint.",
+      "parameters": {
+        "generation_params": {
+          "type": "object",
+          "description": "Core sampling and generation controls.",
+          "properties": {
+            "temperature": { "type": "number", "default": 0.0, "min": 0.0, "max": 2.0 },
+            "top_p": { "type": "number", "default": 1.0, "min": 0.0, "max": 1.0 },
+            "max_tokens": { "type": "integer", "default": 64000, "min": 1, "max": 128000 },
+            "n": { "type": "integer", "default": 1, "min": 1, "max": 10, "description": "Number of completions to generate." },
+            "stop": { "type": "array[string]", "default": null, "description": "Up to 4 stop sequences." },
+            "stream": { "type": "boolean", "default": false },
+            "seed": { "type": "integer", "default": 12345, "min": 0, "max": 4294967295, "description": "Seed for deterministic sampling." }
+          }
+        },
+        "penalty_params": {
+          "type": "object",
+          "description": "Optional penalty parameters.",
+          "properties": {
+            "frequency_penalty": { "type": "number", "default": 0.0, "min": 0.0, "max": 2.0 },
+            "presence_penalty": { "type": "number", "default": 0.0, "min": 0.0, "max": 2.0 },
+            "logprobs": { "type": "integer", "default": null, "min": 0, "max": 20, "description": "Number of top logprobs to return." }
+          }
+        },
+        "response_format": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "default": "text", "options": ["text", "json_object"] }
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N3_METADATA_CONTROL",
+      "description": "Attaches optional metadata to the request for tracking and logging.",
+      "parameters": {
+        "user_tracking_id": {
+          "type": "string",
+          "default": null,
+          "description": "Optional client-side ID for abuse/rate-limit buckets."
+        },
+        "metadata": {
+          "type": "object",
+          "default": { "project": "default" },
+          "description": "Up to 16 key-value pairs for logging."
+        }
+      }
+    }
+  ]
+}

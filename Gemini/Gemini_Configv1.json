@@ -1,0 +1,155 @@
+{
+  "schema_version": "2.0.0",
+  "pipeline_name": "Gemini M2M (Machine-to-Machine) Pipeline",
+  "description": "A pipeline configured for deterministic, non-conversational, instruction-following interaction with the Gemini model.",
+
+  "nodes": [
+    {
+      "node_id": "N1_PREPROC",
+      "description": "Passes the raw user input through with no alterations.",
+      "editable": true,
+      "parameters": {
+        "operations": {
+          "description": "Operations are disabled to ensure raw prompt delivery.",
+          "type": "array",
+          "editable": true,
+          "value": []
+        }
+      }
+    },
+    {
+      "node_id": "N2_SEC_IN",
+      "description": "Input security checks are disabled for direct machine-to-machine interaction.",
+      "editable": true,
+      "parameters": {
+        "default_level": {
+          "description": "Security level is turned off.",
+          "type": "string",
+          "editable": true,
+          "value": "Off"
+        },
+        "policy_definitions": {
+          "description": "No policies are applied when the level is Off.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "Strict": "policies/ingress_strict_v4.json",
+            "Moderate": "policies/ingress_moderate_v4.json",
+            "Off": null
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N3_INTENT",
+      "description": "Intent analysis is bypassed as the interaction is expected to be direct instruction.",
+      "editable": false,
+      "parameters": {
+        "enabled": {
+          "type": "boolean",
+          "value": false
+        }
+      }
+    },
+    {
+      "node_id": "N4_CONTEXT",
+      "description": "Gathers context, pointing to the dedicated M2M system prompt.",
+      "editable": true,
+      "parameters": {
+        "system_prompt_source_path": {
+          "description": "Path to the M2M system prompt.",
+          "type": "string",
+          "editable": true,
+          "value": "Gemini/m2m_system_prompt.txt"
+        },
+        "history_retrieval_config": {
+          "description": "Configuration for conversation history.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "enabled": true,
+            "max_turns": 50,
+            "max_tokens": 32768
+            "summarization_enabled": true
+          }
+        },
+        "rag_config": {
+          "description": "Configuration for Retrieval-Augmented Generation (fetching external data).",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "enabled": true,
+            "trigger_on_intent": ["FactualQuery", "CodeDebugging", "DataAnalysis"],
+            "source_api": "WebSearchAPI",
+            "api_key_secret_name": "WEB_SEARCH_API_KEY"
+
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N5_ASSEMBLY",
+      "description": "Constructs the final prompt for the LLM.",
+      "editable": true,
+      "parameters": {
+        "template_file_path": {
+          "description": "Path to the prompt assembly template.",
+          "type": "string",
+          "editable": true,
+          "value": "templates/llm_prompt_m2m.xml"
+        }
+      }
+    },
+    {
+      "node_id": "N6_LLM_INFERENCE",
+      "description": "Sends the prompt to the LLM with deterministic settings.",
+      "editable": true,
+      "parameters": {
+        "model_name": {
+          "description": "The identifier for the specific language model to be used.",
+          "type": "string",
+          "editable": true,
+          "value": "gemini-1.5-pro-task-optimized"
+        },
+        "inference_parameters": {
+          "description": "Parameters configured for deterministic, machine-like output.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "top_k": 1,
+            "max_output_tokens": 16384,
+            "seed": 42
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N7_POSTPROC",
+      "description": "Egress security and formatting are disabled to ensure raw output.",
+      "editable": true,
+      "parameters": {
+        "egress_security_config": {
+          "description": "Security checks on the output are disabled.",
+          "type": "object",
+          "editable": true,
+          "value": {
+            "default_level": "Off",
+            "policy_definitions": {
+              "Strict": null,
+              "Moderate": null,
+              "Off": null
+            }
+          }
+        },
+        "formatting_operations": {
+          "description": "No formatting is applied to the raw model output.",
+          "type": "array",
+          "editable": true,
+          "value": []
+        }
+      }
+    }
+  ]
+}

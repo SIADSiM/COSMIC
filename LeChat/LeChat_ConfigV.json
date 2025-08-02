@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0.0",
+  "pipeline_name": "LeChat (Mistral) Enhanced Pipeline",
+  "description": "A pipeline for interacting with the Mistral AI API (LeChat), based on official documentation.",
+  "nodes": [
+    {
+      "node_id": "N1_INPUT_PROCESSING",
+      "description": "Performs basic cleaning and normalization of user input.",
+      "parameters": {
+        "operations": {
+          "type": "array[string]",
+          "default": ["trim_whitespace", "normalize_unicode"],
+          "options": ["trim_whitespace", "normalize_unicode", "strip_control_chars"]
+        }
+      }
+    },
+    {
+      "node_id": "N2_SAFETY_GUARD",
+      "description": "Configures Mistral's built-in safety features.",
+      "parameters": {
+        "safe_prompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to inject a safety prompt before all conversations."
+        }
+      }
+    },
+    {
+      "node_id": "N3_CONTEXT_BUILDER",
+      "description": "Assembles conversation history for the prompt.",
+      "parameters": {
+        "max_history_turns": {
+          "type": "integer",
+          "default": 10,
+          "description": "Maximum number of conversation turns to include."
+        }
+      }
+    },
+    {
+      "node_id": "N4_LLM_CALL",
+      "description": "Constructs and sends the request to the Mistral API.",
+      "parameters": {
+        "api_endpoint": {
+          "type": "string",
+          "default": "https://api.mistral.ai/v1/chat/completions",
+          "editable": false
+        },
+        "model": {
+          "type": "string",
+          "default": "mistral-large-latest",
+          "options": ["mistral-large-latest", "mistral-small-latest", "open-mistral-7b"],
+          "description": "The Mistral model to use for the completion."
+        },
+        "generation_params": {
+          "type": "object",
+          "description": "Parameters controlling the text generation process.",
+          "properties": {
+            "temperature": { "type": "number", "default": 0.4, "min": 0.0, "max": 1.0, "description": "Recommended between 0.0 and 0.7" },
+            "top_p": { "type": "number", "default": 1.0, "min": 0.0, "max": 1.0 },
+            "max_tokens": { "type": "integer", "default": 16384, "description": "Max tokens for the completion." },
+            "stream": { "type": "boolean", "default": false },
+            "stop": { "type": "array[string]", "default": null },
+            "random_seed": { "type": "integer", "default": null, "description": "Seed for deterministic sampling." },
+            "presence_penalty": { "type": "number", "default": 0.0, "min": -2.0, "max": 2.0 },
+            "frequency_penalty": { "type": "number", "default": 0.0, "min": -2.0, "max": 2.0 }
+          }
+        },
+        "tool_config": {
+          "type": "object",
+          "properties": {
+            "tool_choice": { "type": "string", "default": "auto", "options": ["auto", "any", "none"] }
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N5_RESPONSE_HANDLER",
+      "description": "Parses the response from the Mistral API.",
+      "parameters": {
+        "action_on_error": {
+          "type": "string",
+          "default": "return_error_message",
+          "options": ["return_error_message", "retry_once"]
+        }
+      }
+    }
+  ]
+}

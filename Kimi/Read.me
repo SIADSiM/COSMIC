@@ -1,0 +1,42 @@
+HEADERS & ENDPOINT DETAILS
+Base URL
+https://api.moonshot.cn/v1
+Required Headers
+Copy
+Authorization: Bearer <sk-…>
+Content-Type: application/json
+Optional Headers
+Copy
+Moonshot-Trace-ID: <uuid>        // propagated for debugging
+Moonshot-Timeout-Ms: 1 – 60000  // hard request timeout (default 30 000)
+Endpoints
+Copy
+POST /v1/chat/completions        // chat messages (above object)
+POST /v1/completions             // legacy text-completion (receives "prompt")
+GET  /v1/models                  // model catalog
+POST /v1/embeddings              // embedding only (cannot mix with chat)
+RATE LIMIT & RESOURCE WINDOWS
+Table
+Copy
+Model	TPM (tokens)	RPM (requests)	Context
+moonshot-v1-8k	1 000 000	1 000	8 192
+moonshot-v1-32k	1 000 000	600	32 768
+moonshot-v1-128k	1 000 000	300	131 072
+Headers returned (x-ratelimit-*) give current token/request counts and reset time.
+SECURITY / MODERATION FLAGS
+Ingress: hard-coded block lists, jailbreak patterns, PII detection.
+Egress: same filters, plus code-execution safety (no changes exposed to caller).
+No client-controllable moderation level (Moderate/Strict/Off) exists—filters are always on.
+PROCESSING QUEUE & LATENCY
+No explicit queue-id parameter.
+Priority is strictly FIFO within each rate-limit bucket.
+Typical first-token latency:
+– 8 k: 120–250 ms (China mainland), 400–600 ms (global)
+– 128 k: 400–900 ms (first chunk after full prompt ingest)
+ERROR CODES
+400 – malformed JSON / schema violation
+401 – invalid key
+403 – content policy block (ingress or egress)
+429 – rate limit hit
+500 – internal error
+503 – temporary overload

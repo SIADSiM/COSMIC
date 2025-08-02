@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0.0",
+  "pipeline_name": "Kimi Moonshot API Pipeline",
+  "description": "A pipeline for interacting with the Kimi/Moonshot API, structured for clarity and control over requests and responses.",
+  "nodes": [
+    {
+      "node_id": "N1_REQUEST_VALIDATION",
+      "description": "Validates the incoming request payload against Moonshot API constraints.",
+      "parameters": {
+        "max_message_bytes": {
+          "type": "integer",
+          "default": 8192000,
+          "description": "Max size for message content in bytes (UTF-8)."
+        },
+        "max_tools": {
+          "type": "integer",
+          "default": 128,
+          "description": "Maximum number of tools allowed in a request."
+        },
+        "max_stop_sequences": {
+          "type": "integer",
+          "default": 4
+        },
+        "max_stop_sequence_length": {
+          "type": "integer",
+          "default": 32
+        }
+      }
+    },
+    {
+      "node_id": "N2_API_SETUP",
+      "description": "Prepares the API request, including endpoint and headers.",
+      "parameters": {
+        "base_url": {
+          "type": "string",
+          "default": "https://api.moonshot.cn/v1",
+          "description": "The base URL for the Moonshot API."
+        },
+        "endpoint": {
+          "type": "string",
+          "default": "/chat/completions",
+          "options": ["/chat/completions", "/completions", "/embeddings", "/models"],
+          "description": "The API endpoint to use."
+        },
+        "request_timeout_ms": {
+          "type": "integer",
+          "default": 30000,
+          "min": 1,
+          "max": 60000,
+          "description": "Hard request timeout in milliseconds."
+        }
+      }
+    },
+    {
+      "node_id": "N3_LLM_CALL",
+      "description": "Constructs the payload and calls the Moonshot LLM endpoint.",
+      "parameters": {
+        "model": {
+          "type": "string",
+          "default": "moonshot-v1-32k",
+          "options": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+          "description": "The model to use for the completion."
+        },
+        "generation_params": {
+          "type": "object",
+          "description": "Core sampling and generation controls.",
+          "properties": {
+            "temperature": { "type": "number", "default": 0.3, "min": 0.0, "max": 2.0 },
+            "top_p": { "type": "number", "default": 0.7, "min": 0.0, "max": 1.0 },
+            "max_tokens": { "type": "integer", "default": 4096, "min": 1, "max": 128000 },
+            "n": { "type": "integer", "default": 1, "min": 1, "max": 10, "description": "Number of completions to generate." },
+            "stop": { "type": "array[string]", "default": null, "description": "Up to 4 stop sequences." },
+            "stream": { "type": "boolean", "default": false }
+          }
+        },
+        "advanced_params": {
+          "type": "object",
+          "description": "Advanced and less commonly used parameters.",
+          "properties": {
+            "seed": { "type": "integer", "default": null, "min": 0, "max": 4294967295, "description": "Seed for reproducible sampling." },
+            "frequency_penalty": { "type": "number", "default": 0.0, "min": 0.0, "max": 2.0 },
+            "presence_penalty": { "type": "number", "default": 0.0, "min": 0.0, "max": 2.0 },
+            "logprobs": { "type": "integer", "default": null, "min": 0, "max": 20, "description": "Number of top logprobs to return." },
+            "echo": { "type": "boolean", "default": false, "description": "Include prompt tokens in the response." }
+          }
+        },
+        "response_format": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "default": "text", "options": ["text", "json_object"] }
+          }
+        },
+        "tool_config": {
+          "type": "object",
+          "properties": {
+            "tool_choice": { "type": "string", "default": "auto", "options": ["none", "auto", "function"] }
+          }
+        }
+      }
+    },
+    {
+      "node_id": "N4_RESPONSE_HANDLING",
+      "description": "Processes the response from the API, including error handling.",
+      "parameters": {
+        "on_rate_limit": {
+          "type": "string",
+          "default": "retry_with_backoff",
+          "options": ["retry_with_backoff", "fail_fast"],
+          "description": "Action to take when a 429 rate limit error is received."
+        },
+        "on_content_block": {
+          "type": "string",
+          "default": "return_error_403",
+          "description": "Action for 403 content policy violations. Moderation is non-configurable and always on."
+        },
+        "on_server_error": {
+          "type": "string",
+          "default": "retry_twice",
+          "options": ["retry_once", "retry_twice", "fail_fast"],
+          "description": "Action for 500/503 server errors."
+        }
+      }
+    }
+  ]
+}
