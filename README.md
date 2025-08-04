@@ -98,10 +98,21 @@ This makes the system more robust, predictable, and easier to scale and debug.
 
 ## 🤝 Contributing
 
-This is a community-driven project. Contributions are welcome! Please feel free to open a pull request to:
+ Please feel free to open a pull request to:
 -   Add a configuration for a new LLM.
 -   Add new recipes or system prompts to an existing configuration.
 -   Improve the documentation.
 
-Let's build the most comprehensive and powerful collection of LLM configurations together!
+---
+
+## 📜 License
+
+This project is licensed under a custom non-commercial license.
+
+* ✅ **Free for personal, academic, and research use.**
+* ❌ **Commercial use is strictly prohibited without a separate license.**
+
+For commercial licensing inquiries, please contact me at ** s i a d s i m @ g m a i l . c o m  **.
+
+---
 
